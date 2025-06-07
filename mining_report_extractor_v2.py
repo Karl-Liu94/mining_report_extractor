@@ -38,10 +38,9 @@ class ResourceQuantityDetail(BaseModel):
 
 class ResourceCategory(BaseModel):
     """资源量类别模型"""
-    类别_333: Optional[ResourceQuantityDetail] = None
-    类别_332: Optional[ResourceQuantityDetail] = None
-    类别_331: Optional[ResourceQuantityDetail] = None
-    类别_高于331: Optional[ResourceQuantityDetail] = None
+    推断资源量: Optional[ResourceQuantityDetail] = None
+    控制资源量: Optional[ResourceQuantityDetail] = None
+    探明资源量: Optional[ResourceQuantityDetail] = None
     总计: Optional[ResourceQuantityDetail] = None
 
 
@@ -135,10 +134,9 @@ class MiningReportExtractor:
 ## 资源信息
 - 矿种：返回完整格式如"金矿"、"铜矿"、"银矿"，不要只返回"金"、"铜"、"银"
 - 资源量情况：对于每个矿种（包括主矿种和伴生矿种），都要尝试按以下类别分别提取：
-  * 333类别（推断的资源量）
-  * 332类别（控制的资源量）
-  * 331类别（探明的资源量）
-  * 高于331类别（如遇1或2开头的编号，如"111"、"121b"或"221"等均计入此类别）
+  * 推断资源量（如果报告中遇到333资源量，计入这该类别）
+  * 控制资源量（如果报告中遇到332资源量，计入这该类别）
+  * 探明资源量（如果报告中遇到331资源量、1、2开头的资源量，如122b、111等计入这该类别）
   * 总计（将上述资源量加总，表示该矿种的所有资源情况）
 
 **重要说明：**
@@ -371,7 +369,7 @@ def main():
     extractor = MiningReportExtractor()
     
     # 设置PDF文件路径
-    pdf_file = "2023年储量年报.pdf"
+    pdf_file = "dataset/zehua.pdf"
     
     try:
         # 提取信息（自动判断上传方式）- 只调用一次大模型
