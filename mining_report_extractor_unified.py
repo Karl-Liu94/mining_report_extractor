@@ -219,18 +219,20 @@ class GeminiMiningReportExtractor(BaseMiningReportExtractor):
     
     FILE_SIZE_THRESHOLD = 20 * 1024 * 1024  # 20MB
     
-    def __init__(self, api_key: Optional[str] = None, model: str = "gemini-2.5-flash"):
+    def __init__(self, api_key: Optional[str] = None, model: str = "gemini-2.5-flash", env_file: str = ".env"):
         super().__init__(api_key, model)
         
         try:
             from google import genai
             from google.genai import types
+            from dotenv import load_dotenv
             self.genai = genai
             self.types = types
+            load_dotenv(env_file)
         except ImportError:
-            raise ImportError("请安装google-genai包: pip install google-genai")
+            raise ImportError("请安装必需包: pip install google-genai python-dotenv")
         
-        self.api_key = api_key or os.environ.get('GEMINI_API_KEY')
+        self.api_key = api_key or os.getenv('GEMINI_API_KEY')
         if not self.api_key:
             raise ValueError("请提供GEMINI_API_KEY环境变量或直接传入api_key参数")
         
@@ -290,7 +292,7 @@ class GeminiMiningReportExtractor(BaseMiningReportExtractor):
 class OpenAIMiningReportExtractor(BaseMiningReportExtractor):
     """基于OpenAI的矿山报告提取器"""
     
-    def __init__(self, api_key: Optional[str] = None, model: str = "o1-mini", env_file: str = "openai.env"):
+    def __init__(self, api_key: Optional[str] = None, model: str = "o1-mini", env_file: str = ".env"):
         super().__init__(api_key, model)
         
         try:
