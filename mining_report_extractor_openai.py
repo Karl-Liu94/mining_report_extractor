@@ -2,8 +2,8 @@ import os
 import json
 import pathlib
 from typing import Optional, List, Dict, Any
-from google import genai
-from google.genai import types
+from openai import OpenAI
+from dotenv import load_dotenv
 from pydantic import BaseModel
 
 
@@ -59,24 +59,25 @@ class MiningReport(BaseModel):
 
 
 # ========== 主提取器类 ==========
-class MiningReportExtractor:
-    """矿山储量核实报告信息提取器"""
+class MiningReportExtractorOpenAI:
+    """基于OpenAI的矿山储量核实报告信息提取器"""
     
-    # 文件大小阈值：20MB（根据Gemini官方文档）
-    FILE_SIZE_THRESHOLD = 20 * 1024 * 1024  # 20MB in bytes
-    
-    def __init__(self, api_key: Optional[str] = None, model: str = "gemini-2.5-flash-preview-05-20"):
+    def __init__(self, api_key: Optional[str] = None, model: str = "o4-mini", env_file: str = "openai.env"):
         """初始化提取器
         
         Args:
-            api_key: Gemini API密钥，如果不提供则从环境变量获取
+            api_key: OpenAI API密钥，如果不提供则从环境变量获取
             model: 使用的模型名称
+            env_file: 环境变量文件路径
         """
-        self.api_key = api_key or os.environ.get('GEMINI_API_KEY')
-        if not self.api_key:
-            raise ValueError("请提供GEMINI_API_KEY环境变量或直接传入api_key参数")
+        # 加载环境变量
+        load_dotenv(env_file)
         
-        self.client = genai.Client(api_key=self.api_key)
+        self.api_key = api_key or os.getenv('OPENAI_API_KEY')
+        if not self.api_key:
+            raise ValueError("请提供OPENAI_API_KEY环境变量或直接传入api_key参数")
+        
+        self.client = OpenAI(api_key=self.api_key)
         self.model = model
         self.prompt = self._build_prompt()
     
@@ -91,18 +92,6 @@ class MiningReportExtractor:
         """
         file_size_bytes = pathlib.Path(file_path).stat().st_size
         return file_size_bytes / (1024 * 1024)
-    
-    def _should_use_file_api(self, file_path: str) -> bool:
-        """判断是否应该使用File API
-        
-        Args:
-            file_path: 文件路径
-            
-        Returns:
-            是否使用File API
-        """
-        file_size_bytes = pathlib.Path(file_path).stat().st_size
-        return file_size_bytes > self.FILE_SIZE_THRESHOLD
     
     def _build_prompt(self) -> str:
         """构建提示词"""
@@ -159,12 +148,33 @@ class MiningReportExtractor:
 请仔细阅读文档内容，特别注意资源量统计表格，确保提取的信息准确完整。
 """
 
-    def extract_from_file(self, file_path: str, use_file_api: Optional[bool] = None) -> MiningReport:
+    def _upload_file(self, file_path: str) -> str:
+        """上传文件到OpenAI
+        
+        Args:
+            file_path: 文件路径
+            
+        Returns:
+            文件ID
+        """
+        try:
+            print("📤 正在上传文件到OpenAI服务器...")
+            with open(file_path, "rb") as f:
+                file = self.client.files.create(
+                    file=f,
+                    purpose="user_data"
+                )
+            print("✅ 文件上传完成")
+            return file.id
+        except Exception as e:
+            print(f"❌ 文件上传失败: {e}")
+            raise
+
+    def extract_from_file(self, file_path: str) -> MiningReport:
         """从PDF文件提取信息
         
         Args:
             file_path: PDF文件路径
-            use_file_api: 是否使用文件API上传。如果为None，则自动根据文件大小判断
             
         Returns:
             MiningReport对象
@@ -176,46 +186,45 @@ class MiningReportExtractor:
             
             # 获取文件大小信息
             file_size_mb = self._get_file_size_mb(file_path)
-            
-            # 自动判断是否使用File API
-            if use_file_api is None:
-                use_file_api = self._should_use_file_api(file_path)
-            
-            # 显示文件信息和上传方式
             print(f"📁 文件大小: {file_size_mb:.2f} MB")
-            if use_file_api:
-                print(f"📤 使用File API上传（文件大小超过{self.FILE_SIZE_THRESHOLD/(1024*1024):.0f}MB阈值）")
-            else:
-                print(f"📤 使用直接字节上传")
             
-            # 准备文件内容
-            if use_file_api:
-                # 使用文件API上传
-                print("⏳ 正在上传文件到Gemini服务器...")
-                uploaded_file = self.client.files.upload(file=filepath)
-                file_content = uploaded_file
-                print("✅ 文件上传完成")
-            else:
-                # 直接读取文件字节
-                file_content = types.Part.from_bytes(
-                    data=filepath.read_bytes(),
-                    mime_type='application/pdf',
-                )
+            # 上传文件
+            file_id = self._upload_file(file_path)
             
-            # 调用API提取信息
+            # 调用OpenAI API提取信息
             print("🔍 正在分析文档内容...")
-            response = self.client.models.generate_content(
-                model=self.model,
-                contents=[file_content, self.prompt],
-                config={
-                    "response_mime_type": "application/json",
-                    "response_schema": MiningReport,
-                }
-            )
-            
-            # 解析响应为Pydantic模型
-            result = MiningReport.model_validate_json(response.text)
-            return result
+            try:
+                response = self.client.responses.parse(
+                    model=self.model,
+                    input=[
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "input_file",
+                                    "file_id": file_id,
+                                },
+                                {
+                                    "type": "input_text",
+                                    "text": self.prompt,
+                                },
+                            ]
+                        }
+                    ],
+                    text_format=MiningReport,
+                )
+                
+                result = response.output_parsed
+                print("✅ 文档分析完成")
+                return result
+                
+            finally:
+                # 清理上传的文件
+                try:
+                    self.client.files.delete(file_id)
+                    print("🗑️ 临时文件已清理")
+                except Exception as e:
+                    print(f"⚠️ 清理临时文件时出现警告: {e}")
             
         except FileNotFoundError as e:
             print(f"❌ 文件错误: {e}")
@@ -224,17 +233,16 @@ class MiningReportExtractor:
             print(f"❌ 提取过程中出现错误: {e}")
             raise
     
-    def extract_to_dict(self, file_path: str, use_file_api: Optional[bool] = None) -> Dict[str, Any]:
+    def extract_to_dict(self, file_path: str) -> Dict[str, Any]:
         """提取信息并返回字典格式
         
         Args:
             file_path: PDF文件路径
-            use_file_api: 是否使用文件API上传。如果为None，则自动根据文件大小判断
             
         Returns:
             提取的信息字典
         """
-        result = self.extract_from_file(file_path, use_file_api)
+        result = self.extract_from_file(file_path)
         return result.model_dump(exclude_none=True)
     
     def save_result(self, result: MiningReport, output_path: str) -> bool:
@@ -261,13 +269,12 @@ class MiningReportExtractor:
             return False
     
     def extract_and_save(self, file_path: str = None, output_path: Optional[str] = None, 
-                        use_file_api: Optional[bool] = None, result: Optional[MiningReport] = None) -> bool:
+                        result: Optional[MiningReport] = None) -> bool:
         """提取信息并保存到文件（支持从已有结果保存）
         
         Args:
             file_path: PDF文件路径（如果提供result则可为None）
             output_path: 输出JSON文件路径，默认为原文件名+_result.json
-            use_file_api: 是否使用文件API上传。如果为None，则自动根据文件大小判断
             result: 已提取的MiningReport对象（如果提供则不会重新提取）
             
         Returns:
@@ -285,7 +292,7 @@ class MiningReportExtractor:
             else:
                 if file_path is None:
                     raise ValueError("必须提供file_path或result参数")
-                result_to_save = self.extract_from_file(file_path, use_file_api)
+                result_to_save = self.extract_from_file(file_path)
                 if output_path is None:
                     output_path = pathlib.Path(file_path).stem + "_result.json"
             
@@ -344,35 +351,42 @@ class MiningReportExtractor:
                         print(f"       - 金属量: {total.金属量 or 'N/A'}")
                         print(f"       - 品位: {total.品位 or 'N/A'}")
         
+        # 其它信息
+        if result.其它信息:
+            print(f"\n📝 其它信息:")
+            print(f"  {result.其它信息}")
+        
         print("\n" + "="*50)
 
 
 # ========== 便捷函数 ==========
-def quick_extract(file_path: str, api_key: Optional[str] = None) -> Dict[str, Any]:
+def quick_extract(file_path: str, api_key: Optional[str] = None, env_file: str = "openai.env") -> Dict[str, Any]:
     """快速提取函数，直接返回字典结果
     
     Args:
         file_path: PDF文件路径
         api_key: API密钥（可选）
+        env_file: 环境变量文件路径
         
     Returns:
         提取的信息字典
     """
-    extractor = MiningReportExtractor(api_key=api_key)
+    extractor = MiningReportExtractorOpenAI(api_key=api_key, env_file=env_file)
     return extractor.extract_to_dict(file_path)
 
 
 # ========== 主函数 ==========
 def main():
+    MODEL = "o3"
     """主函数 - 使用示例"""
     # 创建提取器实例
-    extractor = MiningReportExtractor()
+    extractor = MiningReportExtractorOpenAI(model=MODEL)
     
     # 设置PDF文件路径
-    pdf_file = "dataset/zehua.pdf"
+    pdf_file = "储量核实20150410.pdf"
     
     try:
-        # 提取信息（自动判断上传方式）- 只调用一次大模型
+        # 提取信息
         print("🚀 开始处理矿山报告...")
         result = extractor.extract_from_file(pdf_file)
         
@@ -389,5 +403,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main() 
-    # print(quick_extract("file.pdf"))
+    main()
+    # print(quick_extract("file.pdf")) 
