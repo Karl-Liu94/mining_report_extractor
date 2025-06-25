@@ -1,7 +1,7 @@
 import os
 import json
 import pathlib
-from typing import Optional, List, Dict, Any, Union
+from typing import Optional, List, Dict, Any, Tuple
 from abc import ABC, abstractmethod
 from pydantic import BaseModel
 
@@ -26,7 +26,7 @@ class MiningRightsInfo(BaseModel):
     生产规模: Optional[str] = None
     矿区面积: Optional[str] = None
     矿区海拔: Optional[str] = None
-    以往勘查工作:Optional[str] = None
+    以往勘查工作: Optional[str] = None
 
 
 class ResourceQuantityDetail(BaseModel):
@@ -49,6 +49,7 @@ class ResourceInfo(BaseModel):
     矿种: Optional[str] = None
     资源量情况: Optional[ResourceCategory] = None
 
+
 class OreBodyDistribution(BaseModel):
     """矿体分布情况信息模型"""
     矿体编号: Optional[str] = None
@@ -63,7 +64,6 @@ class OreBodyDistribution(BaseModel):
     矿体金属量: Optional[str] = None
     矿体矿石量: Optional[str] = None
     矿体品位: Optional[str] = None
-
 
 
 class MiningReport(BaseModel):
@@ -139,8 +139,6 @@ EXTRACTION_PROMPT = """
 
 **重要说明：**
 以上信息报告中可能有描述，可能没有描述，如果没有找到描述则返回null，切不可没有根据地胡乱编造！
-以上信息报告中可能有描述，可能没有描述，如果没有找到描述则返回null，切不可没有根据地胡乱编造！
-以上信息报告中可能有描述，可能没有描述，如果没有找到描述则返回null，切不可没有根据地胡乱编造！
 
 ## 其它信息
 提取任何上述未提到但你认为有价值的信息
@@ -148,6 +146,16 @@ EXTRACTION_PROMPT = """
 如果某些信息在文档中未找到，请在对应字段填入null。
 请仔细阅读文档内容，特别注意资源量统计表格，确保提取的信息准确完整。
 """
+
+CONVERSATION_INSTRUCTIONS = """你是一名地质和矿业领域的专家，请你仔细阅读报告内容，认真回答用户的问题，注意答案需要条理清晰，如果遇到不知道或者报告中没有的问题可直言不知道，切不可胡编乱造！优先保证答案的正确性"""
+
+
+# ========== 配置常量 ==========
+GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.5-pro"]
+OPENAI_MODELS = ["o4-mini", "o3", "o3-pro"]
+EXIT_COMMANDS = ['exit', 'quit', '退出', '结束']
+CONFIRM_CHOICES = ['y', 'yes', '是', '好']
+DENY_CHOICES = ['n', 'no', '否', '不']
 
 
 # ========== 抽象基类 ==========
@@ -169,11 +177,6 @@ class BaseMiningReportExtractor(ABC):
         """从PDF文件提取信息"""
         pass
     
-    def extract_to_dict(self, file_path: str) -> Dict[str, Any]:
-        """提取信息并返回字典格式"""
-        result = self.extract_from_file(file_path)
-        return result.model_dump(exclude_none=True)
-    
     def save_result(self, result: MiningReport, output_path: str) -> bool:
         """保存结果到文件"""
         try:
@@ -186,17 +189,6 @@ class BaseMiningReportExtractor(ABC):
             print(f"❌ 保存文件时出错: {e}")
             return False
     
-    def extract_and_save(self, file_path: str, output_path: Optional[str] = None) -> bool:
-        """提取并保存结果"""
-        try:
-            result = self.extract_from_file(file_path)
-            if output_path is None:
-                output_path = pathlib.Path(file_path).stem + "_result.json"
-            return self.save_result(result, output_path)
-        except Exception as e:
-            print(f"❌ 处理过程中出现错误: {e}")
-            return False
-    
     def print_summary(self, result: MiningReport) -> None:
         """打印提取结果摘要"""
         print("\n" + "="*50)
@@ -206,25 +198,16 @@ class BaseMiningReportExtractor(ABC):
         # 报告信息
         if result.报告信息:
             print(f"\n📋 报告信息:")
-            print(f"  • 报告名称: {result.报告信息.报告名称 or 'N/A'}")
-            print(f"  • 编制单位: {result.报告信息.编制单位 or 'N/A'}")
-            print(f"  • 编制日期: {result.报告信息.编制日期 or 'N/A'}")
+            for field, value in result.报告信息.model_dump().items():
+                print(f"  • {field}: {value or 'N/A'}")
         
         # 矿权信息
         if result.矿权信息:
             print(f"\n⛏️  矿权信息:")
-            print(f"  • 矿权名称: {result.矿权信息.矿权名称 or 'N/A'}")
-            print(f"  • 矿权位置: {result.矿权信息.矿权位置 or 'N/A'}")
-            print(f"  • 勘查程度: {result.矿权信息.勘查程度 or 'N/A'}")
-            print(f"  • 矿权类型: {result.矿权信息.矿权类型 or 'N/A'}")
-            print(f"  • 矿权编号: {result.矿权信息.矿权编号 or 'N/A'}")
-            print(f"  • 矿权起始日期: {result.矿权信息.矿权起始日期 or 'N/A'}")
-            print(f"  • 矿权截止日期: {result.矿权信息.矿权截止日期 or 'N/A'}")
-            print(f"  • 生产规模: {result.矿权信息.生产规模 or 'N/A'}")
-            print(f"  • 矿区面积: {result.矿权信息.矿区面积 or 'N/A'}")
-            print(f"  • 矿区海拔: {result.矿权信息.矿区海拔 or 'N/A'}")
+            for field, value in result.矿权信息.model_dump().items():
+                print(f"  • {field}: {value or 'N/A'}")
         
-        # 资源信息
+        # 资源信息（简化显示）
         if result.资源信息:
             print(f"\n💎 资源信息:")
             for idx, resource in enumerate(result.资源信息, 1):
@@ -232,14 +215,12 @@ class BaseMiningReportExtractor(ABC):
                     print(f"\n  【矿种 {idx}】")
                 print(f"  • 矿种: {resource.矿种 or 'N/A'}")
                 
-                if resource.资源量情况:
-                    print(f"  • 资源量情况:")
-                    if resource.资源量情况.总计:
-                        total = resource.资源量情况.总计
-                        print(f"    📊 总计:")
-                        print(f"       - 矿石量: {total.矿石量 or 'N/A'}")
-                        print(f"       - 金属量: {total.金属量 or 'N/A'}")
-                        print(f"       - 品位: {total.品位 or 'N/A'}")
+                if resource.资源量情况 and resource.资源量情况.总计:
+                    total = resource.资源量情况.总计
+                    print(f"  • 资源量总计:")
+                    print(f"    - 矿石量: {total.矿石量 or 'N/A'}")
+                    print(f"    - 金属量: {total.金属量 or 'N/A'}")
+                    print(f"    - 品位: {total.品位 or 'N/A'}")
         
         # 其它信息
         if result.其它信息:
@@ -273,62 +254,54 @@ class GeminiMiningReportExtractor(BaseMiningReportExtractor):
             raise ValueError("请提供GEMINI_API_KEY环境变量或直接传入api_key参数")
         
         self.client = genai.Client(api_key=self.api_key)
-        self.model = model
     
     def extract_from_file(self, file_path: str, use_file_api: Optional[bool] = None) -> MiningReport:
         """从PDF文件提取信息"""
-        try:
-            filepath = pathlib.Path(file_path)
-            if not filepath.exists():
-                raise FileNotFoundError(f"文件不存在: {file_path}")
-            
-            file_size_mb = self._get_file_size_mb(file_path)
-            
-            # 自动判断是否使用File API
-            if use_file_api is None:
-                use_file_api = pathlib.Path(file_path).stat().st_size > self.FILE_SIZE_THRESHOLD
-            
-            print(f"📁 文件大小: {file_size_mb:.2f} MB")
-            if use_file_api:
-                print(f"📤 使用File API上传（文件大小超过{self.FILE_SIZE_THRESHOLD/(1024*1024):.0f}MB阈值）")
-                print("⏳ 正在上传文件到Gemini服务器...")
-                uploaded_file = self.client.files.upload(file=filepath)
-                file_content = uploaded_file
-                print("✅ 文件上传完成")
-            else:
-                print(f"📤 使用直接字节上传")
-                file_content = self.types.Part.from_bytes(
-                    data=filepath.read_bytes(),
-                    mime_type='application/pdf',
-                )
-            
-            print("🔍 正在分析文档内容...")
-            response = self.client.models.generate_content(
-                model=self.model,
-                contents=[file_content, self.prompt],
-                config={
-                    "response_mime_type": "application/json",
-                    "response_schema": MiningReport,
-                }
+        filepath = pathlib.Path(file_path)
+        if not filepath.exists():
+            raise FileNotFoundError(f"文件不存在: {file_path}")
+        
+        file_size_mb = self._get_file_size_mb(file_path)
+        
+        # 自动判断是否使用File API
+        if use_file_api is None:
+            use_file_api = filepath.stat().st_size > self.FILE_SIZE_THRESHOLD
+        
+        print(f"📁 文件大小: {file_size_mb:.2f} MB")
+        
+        if use_file_api:
+            print(f"📤 使用File API上传（文件大小超过{self.FILE_SIZE_THRESHOLD/(1024*1024):.0f}MB阈值）")
+            print("⏳ 正在上传文件到Gemini服务器...")
+            uploaded_file = self.client.files.upload(file=filepath)
+            file_content = uploaded_file
+            print("✅ 文件上传完成")
+        else:
+            print(f"📤 使用直接字节上传")
+            file_content = self.types.Part.from_bytes(
+                data=filepath.read_bytes(),
+                mime_type='application/pdf',
             )
-            
-            result = MiningReport.model_validate_json(response.text)
-            print("✅ 文档分析完成")
-            return result
-            
-        except FileNotFoundError as e:
-            print(f"❌ 文件错误: {e}")
-            raise
-        except Exception as e:
-            print(f"❌ 提取过程中出现错误: {e}")
-            raise
+        
+        print("🔍 正在分析文档内容...")
+        response = self.client.models.generate_content(
+            model=self.model,
+            contents=[file_content, self.prompt],
+            config={
+                "response_mime_type": "application/json",
+                "response_schema": MiningReport,
+            }
+        )
+        
+        result = MiningReport.model_validate_json(response.text)
+        print("✅ 文档分析完成")
+        return result
 
 
-# ========== OpenAI 实现 ==========
-class OpenAIMiningReportExtractor(BaseMiningReportExtractor):
-    """基于OpenAI的矿山报告提取器"""
+# ========== OpenAI 实现（带对话功能） ==========
+class OpenAIMiningReportExtractorWithConversation(BaseMiningReportExtractor):
+    """基于OpenAI的矿山报告提取器（带对话功能）"""
     
-    def __init__(self, api_key: Optional[str] = None, model: str = "o1-mini", env_file: str = ".env"):
+    def __init__(self, api_key: Optional[str] = None, model: str = "o4-mini", env_file: str = ".env"):
         super().__init__(api_key, model)
         
         try:
@@ -344,138 +317,166 @@ class OpenAIMiningReportExtractor(BaseMiningReportExtractor):
             raise ValueError("请提供OPENAI_API_KEY环境变量或直接传入api_key参数")
         
         self.client = OpenAI(api_key=self.api_key)
-        self.model = model
+        self.file_id = None  # 保存上传的文件ID
+        self.initial_response_id = None  # 保存初始提取响应的ID
     
     def _upload_file(self, file_path: str) -> str:
         """上传文件到OpenAI"""
-        try:
-            print("📤 正在上传文件到OpenAI服务器...")
-            with open(file_path, "rb") as f:
-                file = self.client.files.create(file=f, purpose="user_data")
-            print("✅ 文件上传完成")
-            return file.id
-        except Exception as e:
-            print(f"❌ 文件上传失败: {e}")
-            raise
+        print("📤 正在上传文件到OpenAI服务器...")
+        with open(file_path, "rb") as f:
+            file = self.client.files.create(file=f, purpose="user_data")
+        print("✅ 文件上传完成")
+        return file.id
     
     def extract_from_file(self, file_path: str) -> MiningReport:
         """从PDF文件提取信息"""
-        try:
-            filepath = pathlib.Path(file_path)
-            if not filepath.exists():
-                raise FileNotFoundError(f"文件不存在: {file_path}")
-            
-            file_size_mb = self._get_file_size_mb(file_path)
-            print(f"📁 文件大小: {file_size_mb:.2f} MB")
-            
-            file_id = self._upload_file(file_path)
-            
-            print("🔍 正在分析文档内容...")
-            try:
-                response = self.client.responses.parse(
-                    model=self.model,
-                    input=[
+        filepath = pathlib.Path(file_path)
+        if not filepath.exists():
+            raise FileNotFoundError(f"文件不存在: {file_path}")
+        
+        file_size_mb = self._get_file_size_mb(file_path)
+        print(f"📁 文件大小: {file_size_mb:.2f} MB")
+        
+        self.file_id = self._upload_file(file_path)
+        
+        print("🔍 正在分析文档内容...")
+        response = self.client.responses.parse(
+            model=self.model,
+            input=[
+                {
+                    "role": "user",
+                    "content": [
                         {
-                            "role": "user",
-                            "content": [
-                                {
-                                    "type": "input_file",
-                                    "file_id": file_id,
-                                },
-                                {
-                                    "type": "input_text",
-                                    "text": self.prompt,
-                                },
-                            ]
-                        }
-                    ],
-                    text_format=MiningReport,
+                            "type": "input_file",
+                            "file_id": self.file_id,
+                        },
+                        {
+                            "type": "input_text",
+                            "text": self.prompt,
+                        },
+                    ]
+                }
+            ],
+            text_format=MiningReport,
+        )
+        
+        # 保存初始响应ID，用于后续对话
+        self.initial_response_id = response.id
+        
+        result = response.output_parsed
+        print("✅ 文档分析完成")
+        return result
+    
+    def start_conversation(self, conversation_model: Optional[str] = None):
+        """开始对话模式"""
+        if not self.initial_response_id:
+            print("❌ 请先提取报告信息后再进入对话模式")
+            return
+        
+        # 使用对话模型（如果未指定，使用提取时的模型）
+        model = conversation_model or self.model
+        
+        print("\n" + "="*50)
+        print("💬 进入对话模式")
+        print(f"🤖 使用模型: {model}")
+        print("="*50)
+        print("您现在可以询问关于这份矿山报告的任何问题。")
+        print("输入 'exit' 或 '退出' 结束对话。")
+        print("="*50)
+        
+        previous_response_id = self.initial_response_id
+        
+        while True:
+            try:
+                # 获取用户输入
+                user_input = input("\n🙋 您的问题: ").strip()
+                
+                # 检查是否退出
+                if user_input.lower() in EXIT_COMMANDS:
+                    print("\n👋 结束对话，感谢使用！")
+                    break
+                
+                if not user_input:
+                    print("❌ 请输入有效的问题")
+                    continue
+                
+                # 发送问题并获取回答
+                print("\n🤔 AI正在思考...")
+                response = self.client.responses.create(
+                    model=model,
+                    instructions=CONVERSATION_INSTRUCTIONS,
+                    previous_response_id=previous_response_id,
+                    input=user_input,
                 )
                 
-                result = response.output_parsed
-                print("✅ 文档分析完成")
-                return result
+                # 打印回答
+                print("\n🤖 AI回答:")
+                print("-" * 50)
+                print(response.output_text)
+                print("-" * 50)
                 
-            finally:
-                # 清理上传的文件
-                try:
-                    self.client.files.delete(file_id)
-                    print("🗑️ 临时文件已清理")
-                except Exception as e:
-                    print(f"⚠️ 清理临时文件时出现警告: {e}")
-            
-        except FileNotFoundError as e:
-            print(f"❌ 文件错误: {e}")
-            raise
-        except Exception as e:
-            print(f"❌ 提取过程中出现错误: {e}")
-            raise
+                # 更新对话ID
+                previous_response_id = response.id
+                
+            except KeyboardInterrupt:
+                print("\n\n👋 用户中断对话")
+                break
+            except Exception as e:
+                print(f"\n❌ 对话过程中出现错误: {e}")
+                print("您可以尝试重新提问或退出对话。")
+    
+    def cleanup(self):
+        """清理上传的文件"""
+        if self.file_id:
+            try:
+                self.client.files.delete(self.file_id)
+                print("🗑️ 临时文件已清理")
+            except Exception as e:
+                print(f"⚠️ 清理临时文件时出现警告: {e}")
 
 
-# ========== 用户交互和工厂函数 ==========
-def get_user_choice() -> tuple[str, str]:
+# ========== 用户交互函数 ==========
+def select_model(models: List[str], prompt: str) -> str:
+    """通用的模型选择函数"""
+    print(f"\n{prompt}")
+    for i, model in enumerate(models, 1):
+        print(f"{i}. {model}")
+    print(f"{len(models)+1}. 自定义模型名称")
+    
+    while True:
+        choice = input(f"\n请选择模型 (1-{len(models)+1}): ").strip()
+        try:
+            choice_num = int(choice)
+            if 1 <= choice_num <= len(models):
+                return models[choice_num - 1]
+            elif choice_num == len(models) + 1:
+                custom_model = input("请输入自定义模型名称: ").strip()
+                if custom_model:
+                    return custom_model
+            else:
+                print(f"❌ 无效选择，请输入 1-{len(models)+1}")
+        except ValueError:
+            print(f"❌ 请输入有效数字 1-{len(models)+1}")
+
+
+def get_user_choice() -> Tuple[str, str]:
     """获取用户选择的API提供商和模型"""
     print("\n🤖 请选择AI提供商:")
-    print("1. Gemini (Google)")
-    print("2. OpenAI")
+    print("1. Gemini (Google) - 仅支持信息提取")
+    print("2. OpenAI - 支持信息提取和对话功能")
     
     while True:
         choice = input("\n请输入选择 (1-2): ").strip()
         if choice == "1":
             provider = "gemini"
+            model = select_model(GEMINI_MODELS, "📋 Gemini 可用模型:")
             break
         elif choice == "2":
             provider = "openai"
+            model = select_model(OPENAI_MODELS, "📋 OpenAI 可用模型:")
             break
         else:
             print("❌ 无效选择，请输入 1 或 2")
-    
-    # 根据提供商选择模型
-    if provider == "gemini":
-        print("\n📋 Gemini 可用模型:")
-        models = ["gemini-2.5-flash", "gemini-2.5-pro"]
-        for i, model in enumerate(models, 1):
-            print(f"{i}. {model}")
-        print(f"{len(models)+1}. 自定义模型名称")
-        
-        while True:
-            choice = input(f"\n请选择模型 (1-{len(models)+1}): ").strip()
-            try:
-                choice_num = int(choice)
-                if 1 <= choice_num <= len(models):
-                    model = models[choice_num - 1]
-                    break
-                elif choice_num == len(models) + 1:
-                    model = input("请输入自定义模型名称: ").strip()
-                    if model:
-                        break
-                else:
-                    print(f"❌ 无效选择，请输入 1-{len(models)+1}")
-            except ValueError:
-                print(f"❌ 请输入有效数字 1-{len(models)+1}")
-    
-    else:  # openai
-        print("\n📋 OpenAI 可用模型:")
-        models = ["o4-mini","o3","o3-pro"]
-        for i, model in enumerate(models, 1):
-            print(f"{i}. {model}")
-        print(f"{len(models)+1}. 自定义模型名称")
-        
-        while True:
-            choice = input(f"\n请选择模型 (1-{len(models)+1}): ").strip()
-            try:
-                choice_num = int(choice)
-                if 1 <= choice_num <= len(models):
-                    model = models[choice_num - 1]
-                    break
-                elif choice_num == len(models) + 1:
-                    model = input("请输入自定义模型名称: ").strip()
-                    if model:
-                        break
-                else:
-                    print(f"❌ 无效选择，请输入 1-{len(models)+1}")
-            except ValueError:
-                print(f"❌ 请输入有效数字 1-{len(models)+1}")
     
     return provider, model
 
@@ -490,29 +491,35 @@ def create_extractor(provider: str = None, model: str = None, **kwargs) -> BaseM
     if provider == "gemini":
         return GeminiMiningReportExtractor(model=model, **kwargs)
     elif provider == "openai":
-        return OpenAIMiningReportExtractor(model=model, **kwargs)
+        return OpenAIMiningReportExtractorWithConversation(model=model, **kwargs)
     else:
         raise ValueError(f"不支持的提供商: {provider}")
-
-
-# ========== 便捷函数 ==========
-def quick_extract(file_path: str, provider: str = None, model: str = None, **kwargs) -> Dict[str, Any]:
-    """快速提取函数"""
-    extractor = create_extractor(provider, model, **kwargs)
-    return extractor.extract_to_dict(file_path)
 
 
 def get_pdf_file() -> str:
     """获取PDF文件路径"""
     while True:
         file_path = input("\n📁 请输入PDF文件路径: ").strip()
+        # 去除可能的引号
         if file_path.startswith('"') and file_path.endswith('"'):
-            file_path = file_path[1:-1]  # 去除引号
+            file_path = file_path[1:-1]
         
         if pathlib.Path(file_path).exists():
             return file_path
         else:
             print("❌ 文件不存在，请重新输入")
+
+
+def ask_yes_no(prompt: str) -> bool:
+    """通用的是/否询问函数"""
+    while True:
+        choice = input(f"\n{prompt} (y/n): ").strip().lower()
+        if choice in CONFIRM_CHOICES:
+            return True
+        elif choice in DENY_CHOICES:
+            return False
+        else:
+            print("❌ 无效输入，请输入 y 或 n")
 
 
 # ========== 主函数 ==========
@@ -521,9 +528,11 @@ def main():
     print("🏔️  矿山储量核实报告信息提取工具")
     print("="*50)
     
+    extractor = None
     try:
         # 获取用户选择
-        extractor = create_extractor()
+        provider, model = get_user_choice()
+        extractor = create_extractor(provider, model)
         
         # 获取文件路径
         pdf_file = get_pdf_file()
@@ -539,12 +548,29 @@ def main():
         output_path = pathlib.Path(pdf_file).stem + "_result.json"
         extractor.save_result(result, output_path)
         
-        print("\n🎉 处理完成！")
+        print("\n🎉 信息提取完成！")
+        
+        # 如果是OpenAI，询问是否进入对话模式
+        if provider == "openai" and isinstance(extractor, OpenAIMiningReportExtractorWithConversation):
+            if ask_yes_no("💬 是否进入提问环节？"):
+                # 询问是否使用不同的模型进行对话
+                if ask_yes_no("🤖 是否为对话选择不同的模型？"):
+                    conversation_model = select_model(OPENAI_MODELS, "📋 请选择对话模型:")
+                else:
+                    conversation_model = None
+                
+                extractor.start_conversation(conversation_model)
         
     except KeyboardInterrupt:
         print("\n\n👋 用户取消操作")
     except Exception as e:
         print(f"\n❌ 处理失败: {e}")
+        import traceback
+        traceback.print_exc()
+    finally:
+        # 清理资源
+        if extractor and isinstance(extractor, OpenAIMiningReportExtractorWithConversation):
+            extractor.cleanup()
 
 
 if __name__ == "__main__":

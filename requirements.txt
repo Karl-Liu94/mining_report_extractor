@@ -1,3 +1,19 @@
-google-genai>=0.10.0
-pydantic>=2.0.0
-typing-extensions>=4.0.0 
+# 矿山储量核实报告信息提取器依赖包
+# Mining Report Information Extractor Dependencies
+
+# 核心框架依赖
+pydantic>=2.0.0                    # 数据模型和验证
+python-dotenv>=1.0.0               # 环境变量管理
+
+# AI 服务商 SDK
+google-genai>=0.10.0               # Google Gemini API
+openai>=1.0.0                      # OpenAI API
+
+# 基础工具包
+typing-extensions>=4.0.0           # 类型注解扩展
+pathlib2>=2.3.0; python_version < "3.4"  # 路径处理（Python 3.4 以下）
+
+# 可选依赖（用于开发和测试）
+# pytest>=7.0.0                   # 单元测试框架
+# black>=22.0.0                   # 代码格式化
+# flake8>=5.0.0                   # 代码规范检查 
