@@ -1,25 +1,97 @@
-# Python
+# 矿山储量核实报告信息提取器 - Git忽略文件
+# Mining Report Information Extractor - Git Ignore File
+
+# 环境变量和配置文件
+.env
+.env.local
+.env.production
+.env.staging
+config.json
+secrets.json
+
+# API密钥文件
+*_key.txt
+*_keys.txt
+api_keys/
+credentials/
+
+# Python相关
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
+*.pyc
+*.pyo
+*.pyd
 .Python
-build/
-develop-eggs/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# IDE和编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# 测试和覆盖率
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.cache
+.pytest_cache
+
+# 输出文件
+output/
+results/
+exports/
+*.json
+*.csv
+*.xlsx
+!dataset/*.json
+!*_result.json
+
+# 日志文件
+*.log
+logs/
+log/
+
+# 临时文件
+temp/
+tmp/
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# 系统文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# PDF测试文件（可根据需要调整）
+test_*.pdf
+sample_*.pdf
+example_*.pdf
+
+# 部署相关
 dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
+build/
 *.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
+.eggs/
+
+# 文档构建
+docs/_build/
+docs/build/
+site/
 
 # Virtual Environment
 venv/
