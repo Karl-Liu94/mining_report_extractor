@@ -1,187 +1,196 @@
-# 矿山储量核实报告信息提取器 🏔️
+# 矿山储量核实报告信息提取工具 🏔️
 
-一个基于 AI 大模型的智能 PDF 文档信息提取工具，专门用于从矿山储量核实报告中提取结构化信息。支持 **Gemini** 和 **OpenAI** 两大 AI 服务商，其中 OpenAI 版本还具备多轮对话功能。
+一个基于大语言模型的智能PDF文档信息提取工具，专门用于从矿山储量核实报告中提取结构化信息。支持 **Google Gemini** 和 **OpenAI** 两大AI服务商，其中OpenAI版本还具备流式对话功能。
 
-## 🌟 主要特性
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-- **🤖 双 AI 支持**：支持 Google Gemini 和 OpenAI 两大 AI 服务商
-- **💬 智能对话**：OpenAI 版本支持基于报告内容的多轮问答对话
-- **🎯 灵活模型选择**：提供预设模型列表，支持自定义模型名称
-- **📄 智能 PDF 解析**：强大的文档理解和信息提取能力
-- **🔧 统一 API 接口**：无论使用哪种 AI，调用方式完全一致
-- **🗂️ 结构化输出**：使用 Pydantic 模型确保数据质量和一致性
-- **🇨🇳 中文优化**：专门针对中文矿山报告进行优化
-- **💎 多矿种支持**：支持主矿种和伴生矿种的资源量统计
-- **📊 完整信息覆盖**：提取报告信息、矿权信息、资源信息、矿体分布等全面数据
-- **🔒 安全配置**：使用 .env 文件统一管理 API 密钥
+## 🌟 核心特性
+
+### 🤖 双AI支持
+- **Google Gemini**: 高效的文档分析和信息提取
+- **OpenAI**: 支持信息提取 + 流式对话问答功能
+
+### 💬 智能对话（OpenAI专属）
+- 基于已提取报告内容进行多轮问答
+- 流式输出，实时显示AI回答
+- 支持地质和矿业领域专业问题
+
+### 📄 强大的文档处理
+- 智能PDF解析和内容理解
+- 针对中文矿山报告优化
+- 支持大文件处理（自动选择最优上传方式）
+
+### 🎯 结构化输出
+- 使用Pydantic模型确保数据质量
+- 标准化JSON格式输出
+- 支持多矿种和伴生矿种统计
 
 ## 📋 提取信息类型
 
-### 报告信息
-- 报告名称
-- 编制单位
-- 编制日期
+### 1. 报告基本信息
+```
+📋 报告信息
+├── 报告名称      # 报告的完整标题
+├── 编制单位      # 编制机构名称（非委托单位）
+└── 编制日期      # 报告编制时间
+```
 
-### 矿权信息
-- 矿权名称、位置、编号
-- 勘查程度（普查/详查/勘探）
-- 矿权类型（探矿权/采矿权）
-- 矿权起始/截止日期
-- 生产规模、矿区面积、矿区海拔
-- 以往勘查工作
+### 2. 矿权详细信息
+```
+⛏️ 矿权信息
+├── 矿权名称      # 矿权主体名称
+├── 矿权位置      # 地理位置
+├── 勘查程度      # 普查/详查/勘探
+├── 矿权类型      # 探矿权/采矿权
+├── 矿权编号      # 官方编号
+├── 矿权起始日期   # 开始日期
+├── 矿权截止日期   # 结束日期
+├── 生产规模      # 年产量（仅采矿权）
+├── 矿区面积      # 总面积（含单位）
+├── 矿区海拔      # 海拔高度
+└── 以往勘查工作   # 历史工作概述
+```
 
-### 资源信息
-- 矿种（金矿、铜矿、银矿等）
-- 资源量分类统计：
-  - 推断资源量（333类别）
-  - 控制资源量（332类别）
-  - 探明资源量（331类别等）
-  - 总计
-- 每个类别包含：矿石量、金属量、品位
+### 3. 资源量统计信息
+```
+💎 资源信息（支持多矿种）
+├── 矿种          # 如"金矿"、"铜矿"、"银矿"
+└── 资源量情况
+    ├── 推断资源量 (333)    ├── 矿石量
+    ├── 控制资源量 (332)    ├── 金属量
+    ├── 探明资源量 (331等)  └── 品位
+    └── 总计
+```
 
-### 矿体分布信息
-- 矿体编号、名称
-- 矿体几何特征（长度、宽度、厚度、走向、倾角）
-- 矿体规模（面积、体积）
-- 矿体资源量（矿石量、金属量、品位）
+### 4. 矿体分布信息
+```
+🗺️ 矿体分布（支持多矿体）
+├── 矿体编号      # 矿体标识
+├── 矿体名称      # 矿体名称
+├── 几何特征      # 长度/宽度/厚度/走向/倾角
+├── 规模信息      # 面积/体积
+└── 资源量       # 矿石量/金属量/品位
+```
 
 ## 🚀 快速开始
 
-### 环境要求
+### 1. 环境准备
 
-- Python 3.8+
-- Google Gemini API 密钥 或 OpenAI API 密钥（至少一个）
+**系统要求:**
+- Python 3.8 或更高版本
+- 至少一个AI服务商的API密钥
 
-### 安装依赖
-
+**安装依赖:**
 ```bash
 pip install -r requirements.txt
 ```
 
-### 配置 API 密钥
+### 2. 配置API密钥
 
-创建 `.env` 文件并填入您的 API 密钥：
+复制环境变量模板并填入您的API密钥：
 
 ```bash
-# API 密钥配置文件
-# 请填入您的实际 API 密钥
+# 复制模板文件
+cp env_template.txt .env
 
+# 编辑 .env 文件，填入实际的API密钥
+```
+
+`.env` 文件内容示例：
+```bash
 # OpenAI API 密钥（支持对话功能）
-OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxxx
 
 # Gemini API 密钥
-GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_API_KEY=xxxxxxxxxxxxxxxxxxxxx
 ```
 
-### 交互式使用（推荐）
+### 3. 运行程序
 
-运行主程序：
+**交互式使用（推荐）:**
 ```bash
-python mining_report_extractor_with_conversation.py
+python mining_report_extractor_stream.py
 ```
 
-程序流程：
-1. 选择 AI 服务商（Gemini/OpenAI）
-2. 选择提取模型
-3. 输入 PDF 文件路径
-4. 自动提取并显示结果
-5. **（仅 OpenAI）** 选择是否进入对话模式
-6. **（如进入对话）** 选择对话模型并开始问答
+**程序操作流程:**
+1. **选择AI提供商** → Gemini（仅提取）或 OpenAI（提取+对话）
+2. **选择模型** → 从预设列表选择或输入自定义模型名
+3. **输入PDF路径** → 支持拖拽文件或手动输入路径
+4. **自动处理** → 上传、分析、提取信息
+5. **查看结果** → 控制台显示摘要 + JSON文件保存
+6. **（OpenAI专属）对话模式** → 可选进入问答环节
 
-### 编程式使用
+## 💬 对话功能详解
 
-```python
-from mining_report_extractor_with_conversation import create_extractor
+### 特性说明
+- **仅OpenAI版本支持**
+- 基于已上传的报告内容进行智能问答
+- 支持多轮连续对话，具有上下文记忆
+- 流式输出，实时显示AI回答过程
 
-# 方式1：交互式选择
-extractor = create_extractor()
-result = extractor.extract_from_file("your_report.pdf")
-
-# 方式2：直接指定
-extractor = create_extractor("gemini", "gemini-2.5-flash")
-result = extractor.extract_from_file("your_report.pdf")
-
-# 方式3：OpenAI 带对话功能
-extractor = create_extractor("openai", "o4-mini")
-result = extractor.extract_from_file("your_report.pdf")
-# 启动对话（可选择不同模型）
-extractor.start_conversation("o3-pro")
-```
-
-## 💬 对话功能特性
-
-**仅 OpenAI 版本支持**
-
-- **多轮对话**：基于已上传的报告内容进行连续问答
-- **上下文记忆**：AI 会记住之前的问答历史
-- **模型切换**：可为对话选择不同于提取的模型
-- **专业回答**：基于地质和矿业领域专业知识回答问题
-
-### 对话示例
+### 使用示例
 
 ```
-🙋 您的问题: 这个矿山的金矿资源量有多少？
+💬 进入对话模式
+🤖 使用模型: o4-mini
+==================================================
+您现在可以询问关于这份矿山报告的任何问题。
+输入 'exit' 或 '退出' 结束对话。
+==================================================
+
+🙋 您的问题: 这个矿山的主要矿种是什么？
 
 🤖 AI回答:
-根据报告内容，该金矿的总资源量为：
-- 矿石量：23.5万吨
-- 金属量：965公斤
-- 平均品位：4.11克/吨
+--------------------------------------------------
+根据报告内容，该矿山的主要矿种是金矿，同时还有银作为伴生矿种。
+
+具体资源量情况：
+- 金矿总资源量：23.5万吨矿石，965公斤金属，平均品位4.11克/吨
+- 银矿伴生资源量：965公斤金属，平均品位41.1克/吨
+--------------------------------------------------
 
 🙋 您的问题: 这个品位在行业内算什么水平？
 
 🤖 AI回答:
-4.11克/吨的金品位在行业内属于中等偏上水平...
+--------------------------------------------------
+金品位4.11克/吨在行业内属于中等偏上水平：
+
+1. **国际标准对比**：
+   - 低品位金矿：< 2克/吨
+   - 中等品位：2-5克/吨  ← 当前矿山
+   - 高品位金矿：> 5克/吨
+
+2. **开采可行性**：
+   - 该品位已达到经济开采标准
+   - 具备较好的商业开发价值
+
+3. **技术建议**：
+   - 建议采用常规选矿工艺
+   - 可考虑规模化开采
+--------------------------------------------------
+
+🙋 您的问题: exit
+
+👋 结束对话，感谢使用！
 ```
 
-## 🔧 支持的模型
+## 🔧 支持的AI模型
 
-### Gemini 模型
-- `gemini-2.5-flash`（默认，速度快）
-- `gemini-2.5-pro`（质量高）
-- 支持自定义模型名称
+### Google Gemini
+| 模型名称 | 特点 | 适用场景 |
+|---------|------|----------|
+| `gemini-2.5-flash` | 速度快，成本低 | 日常文档提取 |
+| `gemini-2.5-pro` | 质量高，理解深 | 复杂报告分析 |
 
-### OpenAI 模型
-- `o4-mini`（默认，经济实用）
-- `o3`（平衡性能）
-- `o3-pro`（最高质量）
-- 支持自定义模型名称
+### OpenAI
+| 模型名称 | 特点 | 适用场景 |
+|---------|------|----------|
+| `o4-mini` | 经济实用 | 标准提取需求 |
+| `o3` | 平衡性能 | 高质量提取 |
+| `gpt-4.1-nano` | 快速响应 | 简单文档处理 |
 
-## 🏗️ 项目架构
-
-### 文件结构
-```
-mining_file_recognize/
-├── mining_report_extractor_with_conversation.py  # 🌟 主程序（含对话功能）
-├── mining_report_extractor_unified.py            # 统一版本（无对话）
-├── mining_report_extractor_gemini.py             # Gemini 专用版本
-├── mining_report_extractor_openai.py             # OpenAI 专用版本
-├── OpenAI_APIs_for_conversation_state.py         # OpenAI 对话 API 示例
-├── .env                                           # API 密钥配置文件
-├── requirements.txt                               # 依赖列表
-├── README.md                                     # 项目说明
-└── dataset/
-    └── json_format.txt                           # 输出格式示例
-```
-
-### 核心架构设计
-
-```python
-# 抽象基类
-class BaseMiningReportExtractor(ABC):
-    @abstractmethod
-    def extract_from_file(self, file_path: str) -> MiningReport:
-        pass
-
-# 具体实现
-class GeminiMiningReportExtractor(BaseMiningReportExtractor):
-    # Gemini API 实现
-
-class OpenAIMiningReportExtractorWithConversation(BaseMiningReportExtractor):
-    # OpenAI API 实现 + 对话功能
-    def start_conversation(self, conversation_model: Optional[str] = None):
-        # 多轮对话实现
-```
+**注意**: 所有模型都支持自定义名称输入，以适应API更新。
 
 ## 📊 输出格式示例
 
@@ -198,12 +207,12 @@ class OpenAIMiningReportExtractorWithConversation(BaseMiningReportExtractor):
     "勘查程度": "详查",
     "矿权类型": "探矿权",
     "矿权编号": "T51120100102038390",
-    "矿权起始日期": "2018年2月15日",
-    "矿权截止日期": "2020年2月15日",
+    "矿权起始日期": "2010年12月13日",
+    "矿权截止日期": "2018年12月13日",
     "生产规模": null,
-    "矿区面积": "1.06km²",
-    "矿区海拔": "2800-3200m",
-    "以往勘查工作": "区域地质调查、化探、物探等前期工作"
+    "矿区面积": "2.88平方千米",
+    "矿区海拔": "1800-2800米",
+    "以往勘查工作": "历经多轮地质普查和详查工作"
   },
   "资源信息": [
     {
@@ -211,121 +220,243 @@ class OpenAIMiningReportExtractorWithConversation(BaseMiningReportExtractor):
       "资源量情况": {
         "推断资源量": {
           "矿石量": "23.5万吨",
-          "金属量": "965kg",
-          "品位": "4.11g/t"
+          "金属量": "965公斤",
+          "品位": "4.11克/吨"
         },
-        "控制资源量": {
-          "矿石量": "15.2万吨",
-          "金属量": "624kg",
-          "品位": "4.11g/t"
-        },
+        "控制资源量": null,
+        "探明资源量": null,
         "总计": {
-          "矿石量": "38.7万吨",
-          "金属量": "1589kg",
-          "品位": "4.11g/t"
+          "矿石量": "23.5万吨",
+          "金属量": "965公斤",
+          "品位": "4.11克/吨"
+        }
+      }
+    },
+    {
+      "矿种": "银矿",
+      "资源量情况": {
+        "推断资源量": {
+          "矿石量": "23.5万吨",
+          "金属量": "965公斤",
+          "品位": "41.1克/吨"
+        },
+        "控制资源量": null,
+        "探明资源量": null,
+        "总计": {
+          "矿石量": "23.5万吨",
+          "金属量": "965公斤", 
+          "品位": "41.1克/吨"
         }
       }
     }
   ],
   "矿体分布": [
     {
-      "矿体编号": "Ⅰ号矿体",
+      "矿体编号": "I号矿体",
       "矿体名称": "主矿体",
-      "矿体长度": "800m",
-      "矿体宽度": "200m",
-      "矿体厚度": "3.5m",
-      "矿体走向": "NE45°",
+      "矿体长度": "800米",
+      "矿体宽度": "300米",
+      "矿体厚度": "平均1.2米",
+      "矿体走向": "北东45°",
       "矿体倾角": "60°",
-      "矿体面积": "0.16km²",
-      "矿体品位": "4.2g/t"
+      "矿体面积": "24万平方米",
+      "矿体体积": "28.8万立方米",
+      "矿体金属量": "965公斤",
+      "矿体矿石量": "23.5万吨",
+      "矿体品位": "4.11克/吨"
     }
   ],
-  "其它信息": "矿床类型为石英脉型金矿，成矿地质条件良好..."
+  "其它信息": "矿山位于构造活跃带，建议加强地质风险评估"
 }
 ```
 
-## 🛠️ 开发指南
+## 🏗️ 项目架构
 
-### 扩展新的 AI 服务商
-
-1. 继承 `BaseMiningReportExtractor` 类
-2. 实现 `extract_from_file` 方法
-3. 在 `create_extractor` 工厂函数中添加新的分支
-
-### 自定义数据模型
-
-修改 Pydantic 模型以适应特定需求：
-```python
-class CustomReportInfo(BaseModel):
-    # 添加自定义字段
-    custom_field: Optional[str] = None
+### 文件结构
+```
+mining_file_recognize/
+├── 📄 mining_report_extractor_stream.py    # 🌟 主程序（统一版本）
+├── 📄 requirements.txt                     # 依赖清单
+├── 📄 env_template.txt                     # 环境变量模板
+├── 📄 README.md                           # 项目说明文档
+└── 📁 dataset/
+    └── 📄 json_format.txt                  # 输出格式说明
 ```
 
-## ❓ 常见问题
+### 核心架构设计
 
-### Q: 如何获取 API 密钥？
-**A**: 
-- **OpenAI**: 访问 [OpenAI Platform](https://platform.openai.com/) 注册并获取 API 密钥
-- **Gemini**: 访问 [Google AI Studio](https://makersuite.google.com/) 获取 API 密钥
+```python
+# 抽象基类设计
+class BaseMiningReportExtractor(ABC):
+    """矿山报告提取器抽象基类"""
+    
+    @abstractmethod
+    def extract_from_file(self, file_path: str) -> MiningReport:
+        """从PDF文件提取信息"""
+        pass
+    
+    def save_result(self, result: MiningReport, output_path: str) -> bool:
+        """保存结果到文件"""
+        pass
+    
+    def print_summary(self, result: MiningReport) -> None:
+        """打印提取结果摘要"""
+        pass
 
-### Q: 哪个 AI 服务商效果更好？
-**A**: 
-- **Gemini**: 处理中文文档效果好，速度快，成本低
-- **OpenAI**: 信息理解能力强，支持对话功能，适合复杂查询
+# Gemini实现
+class GeminiMiningReportExtractor(BaseMiningReportExtractor):
+    """基于Gemini的矿山报告提取器"""
+    
+    def extract_from_file(self, file_path: str) -> MiningReport:
+        # Gemini API实现
+        pass
 
-### Q: 对话功能支持哪些问题？
-**A**: 
-- 报告内容查询（资源量、矿权信息等）
-- 数据解释和分析
-- 专业术语解释
-- 矿山评估建议
-- 任何基于已上传报告的问题
+# OpenAI实现（含对话功能）
+class OpenAIMiningReportExtractorWithStreamConversation(BaseMiningReportExtractor):
+    """基于OpenAI的矿山报告提取器（带流式对话功能）"""
+    
+    def extract_from_file(self, file_path: str) -> MiningReport:
+        # OpenAI API实现
+        pass
+    
+    def start_conversation(self):
+        """开始流式对话模式"""
+        pass
+```
 
-### Q: 文件大小有限制吗？
-**A**: 
-- **Gemini**: 自动处理大文件（>20MB 使用 File API）
-- **OpenAI**: 支持大文件上传
+### 数据模型设计
 
-## 🤝 贡献指南
+使用 Pydantic 确保数据质量和类型安全：
 
-欢迎提交 Issue 和 Pull Request！
+```python
+class MiningReport(BaseModel):
+    """矿山储量核实报告完整模型"""
+    报告信息: Optional[ReportInfo] = None
+    矿权信息: Optional[MiningRightsInfo] = None  
+    资源信息: Optional[List[ResourceInfo]] = None
+    矿体分布: Optional[List[OreBodyDistribution]] = None
+    其它信息: Optional[str] = None
+```
 
-1. Fork 本项目
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 打开 Pull Request
+## 🔍 使用指南
 
-## 📄 许可证
+### 编程式调用
 
-本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
+```python
+from mining_report_extractor_stream import create_extractor
 
-## 📞 联系方式
+# 方式1: 交互式选择（推荐新手）
+extractor = create_extractor()
+result = extractor.extract_from_file("report.pdf")
 
-如有问题或建议，请通过以下方式联系：
+# 方式2: 直接指定提供商和模型
+extractor = create_extractor("gemini", "gemini-2.5-flash")
+result = extractor.extract_from_file("report.pdf")
 
-- 提交 [GitHub Issue](https://github.com/your-username/mining_file_recognize/issues)
-- 发送邮件至：your-email@example.com
+# 方式3: OpenAI + 对话功能
+extractor = create_extractor("openai", "o4-mini")
+result = extractor.extract_from_file("report.pdf")
 
-## 🔄 更新日志
+# 进入对话模式
+if hasattr(extractor, 'start_conversation'):
+    extractor.start_conversation()
 
-### v2.0.0 (最新)
-- ✨ 新增 OpenAI 多轮对话功能
-- 🎯 支持对话前选择不同模型
-- 🔧 优化代码结构和错误处理
-- 📝 完善文档和示例
+# 保存结果
+extractor.save_result(result, "output.json")
 
-### v1.0.0
-- 🚀 初始版本发布
-- 🤖 支持 Gemini 和 OpenAI 双 AI 服务商
-- 📊 完整的矿山报告信息提取功能
-- 🗂️ 结构化数据输出
+# 清理资源（OpenAI）
+if hasattr(extractor, 'cleanup'):
+    extractor.cleanup()
+```
+
+### 批量处理示例
+
+```python
+import os
+from pathlib import Path
+
+def batch_process_reports(pdf_dir: str, output_dir: str):
+    """批量处理PDF报告"""
+    extractor = create_extractor("gemini", "gemini-2.5-flash")
+    
+    pdf_files = Path(pdf_dir).glob("*.pdf")
+    for pdf_file in pdf_files:
+        try:
+            print(f"Processing: {pdf_file.name}")
+            result = extractor.extract_from_file(str(pdf_file))
+            
+            output_path = Path(output_dir) / f"{pdf_file.stem}_result.json"
+            extractor.save_result(result, str(output_path))
+            
+        except Exception as e:
+            print(f"Error processing {pdf_file.name}: {e}")
+```
+
+## ⚠️ 注意事项
+
+### API配置
+- **API密钥安全**: 请妥善保管您的API密钥，不要将 `.env` 文件提交到公共仓库
+- **网络环境**: 确保网络能正常访问相应的AI服务商API
+- **费用控制**: 大文件处理可能产生较高的API调用费用，建议先用小文件测试
+
+### 文件处理
+- **文件大小**: Gemini支持大于20MB文件自动使用File API上传
+- **文件格式**: 目前仅支持PDF格式的矿山报告
+- **中文优化**: 工具专门针对中文矿山报告进行了优化
+
+### 提取质量
+- **报告标准化**: 结构化程度较高的报告提取效果更好
+- **信息完整性**: 如报告中缺失某些信息，对应字段将返回 `null`
+- **多矿种支持**: 自动识别并提取主矿种和伴生矿种信息
+
+## 🐛 故障排除
+
+### 常见问题
+
+**Q: 提示"API密钥错误"怎么办？**
+A: 检查 `.env` 文件中的API密钥是否正确，确保没有多余的空格或换行符。
+
+**Q: 上传大文件失败？**
+A: Gemini会自动选择File API处理大文件，OpenAI需要确保文件大小在支持范围内。
+
+**Q: 提取结果不准确？**
+A: 可以尝试：
+- 使用更高质量的模型（如gemini-2.5-pro或o3）
+- 确保PDF文件质量良好，文字清晰
+- 检查报告是否为标准的矿山储量核实报告格式
+
+**Q: 对话功能无响应？**
+A: 确保：
+- 使用的是OpenAI版本的提取器
+- 已成功提取报告信息
+- 网络连接正常
+
+### 错误日志
+程序会输出详细的执行日志，包括：
+- 📁 文件大小信息
+- 📤 上传方式选择
+- 🔍 分析进度提示
+- ✅ 成功状态确认
+- ❌ 错误信息详情
+
+## 📞 技术支持
+
+### 获取帮助
+- **Issues**: 在GitHub仓库提交问题
+- **文档**: 查看本README和代码注释
+- **示例**: 参考 `dataset/json_format.txt` 输出格式
+
+### 贡献指南
+欢迎提交PR改进项目：
+1. Fork项目仓库
+2. 创建特性分支
+3. 提交代码改进
+4. 发起Pull Request
 
 ---
 
-**⭐ 如果这个项目对您有帮助，请给我们一个 Star！**
+**开发者**: Mining Report AI Team  
+**许可证**: MIT License  
+**最后更新**: 2024年12月
 
-**作者**: Karl Liu  
-**联系**: [GitHub Issues](https://github.com/Karl-Liu94/mining_file_recognize/issues)  
-**项目地址**: [mining_file_recognize](https://github.com/Karl-Liu94/mining_file_recognize.git) 
-**项目地址**: [mining_file_recognize](https://github.com/Karl-Liu94/mining_file_recognize.git) 
+🏔️ **让AI助力地质勘探，让数据驱动决策！**
